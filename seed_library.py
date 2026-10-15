@@ -43,7 +43,7 @@ ztf_clause = 'abs:("Zwicky Transient Facility" OR "ZTF") OR ack:("1440341" OR "2
 iptf_clause = 'abs:("Intermediate Palomar Transient Factory" OR "iPTF") OR ack:("1313484")'
 
 # Force PTF to match either full string, exact grant, or acronym paired strictly with astronomy terms
-ptf_clause = 'abs:("Palomar Transient Factory") OR ack:("0838126") OR (abs:"PTF" AND abs:("survey" OR "transient" OR "supernova" OR "photometry" OR "telescope" OR "optical" OR "astronomy"))'
+ptf_clause = 'abs:("Palomar Transient Factory") OR ack:("0838126")'
 
 hale_clause = 'ack:("Hale Telescope" OR "Palomar Observatory" OR "Caltech Optical Observatories" OR "P200") OR facility:"Palomar"'
 
