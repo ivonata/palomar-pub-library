@@ -24,6 +24,7 @@ hale_clause = 'ack:("Hale Telescope" OR "Palomar Observatory" OR "Caltech Optica
 
 recent_query = (
     f"(({ztf_clause}) OR ({iptf_clause}) OR ({ptf_clause}) OR ({hale_clause})) "
+    'AND database:astronomy '
     'AND property:refereed '
     'AND entdate:[NOW-14DAYS TO NOW] '
     'NOT bibstem:("GCN" OR "ATel" OR "IAUC")'
