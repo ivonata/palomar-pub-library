@@ -38,17 +38,23 @@ if get_lib_resp.status_code == 200:
     else:
         print(" Library was already empty.")
 
-# --- 2. Build Refined Astronomy-Only Query ---
+# Refined clauses requiring context for short acronym "PTF"
 ztf_clause = 'abs:("Zwicky Transient Facility" OR "ZTF") OR ack:("1440341" OR "2034437" OR "0965661" OR "1545949")'
 iptf_clause = 'abs:("Intermediate Palomar Transient Factory" OR "iPTF") OR ack:("1313484")'
-ptf_clause = 'abs:("Palomar Transient Factory" OR "PTF") OR ack:("0838126")'
+
+# Hardened PTF clause: Matches full name OR "PTF" combined with astronomical terms
+ptf_clause = 'abs:("Palomar Transient Factory") OR (abs:"PTF" AND (abs:("survey" OR "transient" OR "supernova" OR "photometry" OR "telescope" OR "optical") OR ack:"PTF")) OR ack:("0838126")'
+
 hale_clause = 'ack:("Hale Telescope" OR "Palomar Observatory" OR "Caltech Optical Observatories" OR "P200") OR facility:"Palomar"'
+
+# Exclude non-astronomy bibstems and circulars
+exclude_clause = 'NOT bibstem:("GCN" OR "ATel" OR "IAUC" OR "River" OR "Water" OR "Geode" OR "Soil") NOT abs:("pedotransfer" OR "flash flood" OR "soil water")'
 
 full_query = (
     f"(({ztf_clause}) OR ({iptf_clause}) OR ({ptf_clause}) OR ({hale_clause})) "
     'AND database:astronomy '
     'AND property:refereed '
-    'NOT bibstem:("GCN" OR "ATel" OR "IAUC")'
+    f'{exclude_clause}'
 )
 
 print("\nFetching all matching refereed astronomy papers from NASA ADS...")
