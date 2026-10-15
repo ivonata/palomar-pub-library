@@ -38,24 +38,20 @@ if get_lib_resp.status_code == 200:
     else:
         print(" Library was already empty.")
 
-# Refined clauses requiring context for short acronym "PTF"
+# --- 2. Build Airtight Search Query ---
 ztf_clause = 'abs:("Zwicky Transient Facility" OR "ZTF") OR ack:("1440341" OR "2034437" OR "0965661" OR "1545949")'
 iptf_clause = 'abs:("Intermediate Palomar Transient Factory" OR "iPTF") OR ack:("1313484")'
 
-# Hardened PTF clause: Matches full name OR "PTF" combined with astronomical terms
-ptf_clause = 'abs:("Palomar Transient Factory") OR (abs:"PTF" AND (abs:("survey" OR "transient" OR "supernova" OR "photometry" OR "telescope" OR "optical") OR ack:"PTF")) OR ack:("0838126")'
+# Force PTF to match either full string, exact grant, or acronym paired strictly with astronomy terms
+ptf_clause = 'abs:("Palomar Transient Factory") OR ack:("0838126") OR (abs:"PTF" AND abs:("survey" OR "transient" OR "supernova" OR "photometry" OR "telescope" OR "optical" OR "astronomy"))'
 
 hale_clause = 'ack:("Hale Telescope" OR "Palomar Observatory" OR "Caltech Optical Observatories" OR "P200") OR facility:"Palomar"'
 
-# Exclude non-astronomy bibstems and circulars
-exclude_clause = 'NOT bibstem:("GCN" OR "ATel" OR "IAUC" OR "River" OR "Water" OR "Geode" OR "Soil") NOT abs:("pedotransfer" OR "flash flood" OR "soil water")'
+# Direct exclusions for false positive terms and non-astronomy domains
+exclusions = 'NOT abs:("pedotransfer" OR "soil water" OR "flash flood" OR "hill torrents" OR "hydrology" OR "pedology") NOT bibstem:("GCN" OR "ATel" OR "IAUC")'
 
-full_query = (
-    f"(({ztf_clause}) OR ({iptf_clause}) OR ({ptf_clause}) OR ({hale_clause})) "
-    'AND database:astronomy '
-    'AND property:refereed '
-    f'{exclude_clause}'
-)
+# Explicitly group target terms inside parenthetical scope before applying database and property filters
+full_query = f"(({ztf_clause}) OR ({iptf_clause}) OR ({ptf_clause}) OR ({hale_clause})) AND database:astronomy AND property:refereed {exclusions}"
 
 print("\nFetching all matching refereed astronomy papers from NASA ADS...")
 
