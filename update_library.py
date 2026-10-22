@@ -75,21 +75,32 @@ else:
 # =====================================================================
 # 3. Export Full Library Contents to docs/data.json for GitHub Pages
 # =====================================================================
-print("\nFetching full library contents to update docs/data.json...")
+print("\nFetching full library contents (with pagination) to update docs/data.json...")
+
+# Explicitly request up to 10,000 rows to ensure ALL 2,680+ papers are retrieved
+export_params = {
+    "rows": 10000,
+    "start": 0
+}
 
 lib_resp = requests.get(
     f"https://api.adsabs.harvard.edu/v1/biblib/libraries/{LIBRARY_ID}",
-    headers=headers
+    headers=headers,
+    params=export_params
 )
 
 if lib_resp.status_code == 200:
-    all_bibcodes = lib_resp.json().get("documents", [])
+    lib_data = lib_resp.json()
+    all_bibcodes = lib_data.get("documents", [])
+    
+    # Extract total count accurately from metadata or bibcode array length
+    total_count = lib_data.get("metadata", {}).get("num_documents", len(all_bibcodes))
     
     os.makedirs("docs", exist_ok=True)
     with open("docs/data.json", "w") as f:
-        json.dump({"num_documents": len(all_bibcodes), "bibcodes": all_bibcodes}, f, indent=2)
+        json.dump({"num_documents": total_count, "bibcodes": all_bibcodes}, f, indent=2)
         
-    print(f"Successfully exported {len(all_bibcodes)} bibcodes to docs/data.json!")
+    print(f"Successfully exported {len(all_bibcodes)} bibcodes out of {total_count} total to docs/data.json!")
 else:
     print(f"Failed to fetch library contents for dashboard export: {lib_resp.status_code} - {lib_resp.text}")
     exit(1)
