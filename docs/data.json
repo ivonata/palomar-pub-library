@@ -2,7 +2,9 @@
   "num_documents": 2680,
   "metrics": {
     "total_papers": 2680,
+    "refereed_papers": 2000,
     "total_citations": 140977,
+    "all_citations": 140977,
     "h_index": 158,
     "avg_citations": 70.5
   },
