@@ -106,6 +106,7 @@
         const years = Object.keys(yearCounts).sort(function(a, b) {
             return parseInt(a, 10) - parseInt(b, 10);
         });
+        
         const counts = years.map(function(y) {
             return yearCounts[y];
         });
