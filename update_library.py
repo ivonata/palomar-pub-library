@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 
 # 1. Replace with your actual ADS Library ID from your seed run
@@ -69,4 +70,26 @@ if response.status_code == 200:
         print("No new matching papers found this week. Library is up to date!")
 else:
     print(f"ADS Query failed with status code {response.status_code}: {response.text}")
+    exit(1)
+
+# =====================================================================
+# 3. Export Full Library Contents to docs/data.json for GitHub Pages
+# =====================================================================
+print("\nFetching full library contents to update docs/data.json...")
+
+lib_resp = requests.get(
+    f"https://api.adsabs.harvard.edu/v1/biblib/libraries/{LIBRARY_ID}",
+    headers=headers
+)
+
+if lib_resp.status_code == 200:
+    all_bibcodes = lib_resp.json().get("documents", [])
+    
+    os.makedirs("docs", exist_ok=True)
+    with open("docs/data.json", "w") as f:
+        json.dump({"num_documents": len(all_bibcodes), "bibcodes": all_bibcodes}, f, indent=2)
+        
+    print(f"Successfully exported {len(all_bibcodes)} bibcodes to docs/data.json!")
+else:
+    print(f"Failed to fetch library contents for dashboard export: {lib_resp.status_code} - {lib_resp.text}")
     exit(1)
