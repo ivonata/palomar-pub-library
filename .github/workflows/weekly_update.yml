@@ -7,6 +7,10 @@ on:
   # Allows you to manually trigger the script anytime from the GitHub interface
   workflow_dispatch:
 
+  # REQUIRED: Grants write permissions so the bot can commit docs/data.json back to main
+    permissions:
+      contents: write
+
 jobs:
   update-library:
     runs-on: ubuntu-latest
