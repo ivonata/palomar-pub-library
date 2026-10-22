@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Palomar Observatory - Publication & Impact Intelligence</title>
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; background-color: #f8f9fa; color: #333; }
@@ -12,16 +11,22 @@
         h1 { color: #003366; margin-bottom: 5px; }
         p.subtitle { color: #666; margin-top: 0; margin-bottom: 25px; }
         
-        /* Metric Cards */
         .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px; }
         .card { background: white; padding: 20px; border-radius: 8px; border: 1px solid #e0e0e0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .card .number { font-size: 2em; font-weight: bold; color: #005596; margin-top: 5px; }
+        .card .number { font-size: 2.2em; font-weight: bold; color: #005596; margin-top: 5px; }
         .card .label { font-size: 0.85em; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        /* Chart Section */
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 20px; margin-bottom: 25px; }
         .section-box { background: white; padding: 25px; border-radius: 8px; border: 1px solid #e0e0e0; margin-bottom: 25px; }
-        .chart-container { position: relative; height: 350px; width: 100%; }
+        .chart-container { position: relative; height: 320px; width: 100%; }
         
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background-color: #f1f5f9; color: #003366; }
+        tr:hover { background-color: #f8fafc; }
+        a.ads-link { color: #005596; text-decoration: none; font-weight: 500; }
+        a.ads-link:hover { text-decoration: underline; }
+
         #loader { font-size: 1.1em; color: #005596; text-align: center; padding: 40px; }
     </style>
 </head>
@@ -29,9 +34,9 @@
 
 <div class="container">
     <h1>Palomar Observatory Scientific Intelligence</h1>
-    <p class="subtitle">Live analytics generated from refereed publications (Hale Telescope, ZTF, PTF, iPTF)</p>
+    <p class="subtitle">Live impact analytics generated from refereed publications (Hale Telescope, ZTF, PTF, iPTF)</p>
 
-    <div id="loader">Loading publication analytics...</div>
+    <div id="loader">Loading publication intelligence...</div>
 
     <div id="dashboard" style="display: none;">
         <!-- Metrics Summary -->
@@ -40,14 +45,50 @@
                 <div class="label">Total Refereed Papers</div>
                 <div class="number" id="metric-total-papers">0</div>
             </div>
+            <div class="card">
+                <div class="label">Total Citations</div>
+                <div class="number" id="metric-citations">0</div>
+            </div>
+            <div class="card">
+                <div class="label">H-Index</div>
+                <div class="number" id="metric-hindex">0</div>
+            </div>
+            <div class="card">
+                <div class="label">Avg Citations / Paper</div>
+                <div class="number" id="metric-avg-citations">0</div>
+            </div>
         </div>
 
-        <!-- Publication Trend Chart -->
-        <div class="section-box">
-            <h3>Publication Productivity Over Time</h3>
-            <div class="chart-container">
-                <canvas id="yearlyChart"></canvas>
+        <!-- Charts Grid -->
+        <div class="charts-grid">
+            <div class="section-box">
+                <h3>Publication Productivity Over Time</h3>
+                <div class="chart-container">
+                    <canvas id="yearlyChart"></canvas>
+                </div>
             </div>
+            <div class="section-box">
+                <h3>Top Publishing Venues</h3>
+                <div class="chart-container">
+                    <canvas id="journalChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Cited Papers Table -->
+        <div class="section-box">
+            <h3>Top-Cited Landmark Papers</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Journal</th>
+                        <th>Year</th>
+                        <th>Citations</th>
+                    </tr>
+                </thead>
+                <tbody id="top-papers-table"></tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -56,26 +97,20 @@
     async function loadIntelligenceDashboard() {
         try {
             const response = await fetch('./data.json?v=' + new Date().getTime());
-            if (!response.ok) {
-                throw new Error('HTTP error status: ' + response.status);
-            }
+            if (!response.ok) throw new Error('HTTP status: ' + response.status);
             
             const data = await response.json();
+            const metrics = data.metrics || {};
+            const papers = data.papers || [];
 
-            let bibcodes = [];
-            if (Array.isArray(data.bibcodes)) {
-                bibcodes = data.bibcodes;
-            } else if (Array.isArray(data.documents)) {
-                bibcodes = data.documents;
-            } else if (data.documents && Array.isArray(data.documents.bibcodes)) {
-                bibcodes = data.documents.bibcodes;
-            }
+            document.getElementById("metric-total-papers").innerText = (metrics.total_papers || papers.length).toLocaleString();
+            document.getElementById("metric-citations").innerText = (metrics.total_citations || 0).toLocaleString();
+            document.getElementById("metric-hindex").innerText = (metrics.h_index || 0).toLocaleString();
+            document.getElementById("metric-avg-citations").innerText = (metrics.avg_citations || 0).toLocaleString();
 
-            const totalCount = data.num_documents || bibcodes.length;
-            
-            document.getElementById("metric-total-papers").innerText = totalCount.toLocaleString();
-
-            renderYearChart(bibcodes);
+            renderYearChart(papers);
+            renderJournalChart(papers);
+            renderTopPapersTable(papers);
             
             document.getElementById("loader").style.display = "none";
             document.getElementById("dashboard").style.display = "block";
@@ -85,66 +120,89 @@
         }
     }
 
-    function renderYearChart(bibcodes) {
+    function renderYearChart(papers) {
         const yearCounts = {};
         const currentYear = new Date().getFullYear();
 
-        bibcodes.forEach(function(entry) {
-            const bibcode = typeof entry === 'string' ? entry : (entry.bibcode || '');
-            if (!bibcode) return;
-            
-            const match = bibcode.match(/(19\d{2}|20\d{2})/);
-            if (match) {
-                const yearNum = parseInt(match[0], 10);
+        papers.forEach(function(doc) {
+            const yearStr = doc.year;
+            if (yearStr) {
+                const yearNum = parseInt(yearStr, 10);
                 if (yearNum >= 1930 && yearNum <= currentYear) {
-                    const yearStr = yearNum.toString();
                     yearCounts[yearStr] = (yearCounts[yearStr] || 0) + 1;
                 }
             }
         });
 
-        const years = Object.keys(yearCounts).sort(function(a, b) {
-            return parseInt(a, 10) - parseInt(b, 10);
-        });
-        
-        const counts = years.map(function(y) {
-            return yearCounts[y];
-        });
+        const years = Object.keys(yearCounts).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        const counts = years.map(y => yearCounts[y]);
 
         const ctx = document.getElementById('yearlyChart').getContext('2d');
-        
-        if (window.myYearlyChart) {
-            window.myYearlyChart.destroy();
-        }
-
-        window.myYearlyChart = new Chart(ctx, {
+        new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: years,
-                datasets: [{
-                    label: 'Refereed Publications',
-                    data: counts,
-                    backgroundColor: '#005596',
-                    borderRadius: 2
-                }]
+                datasets: [{ label: 'Publications', data: counts, backgroundColor: '#005596', borderRadius: 2 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { 
-                    legend: { display: false } 
-                },
-                scales: {
-                    y: { 
-                        beginAtZero: true, 
-                        grid: { color: '#f0f0f0' } 
-                    },
-                    x: { 
-                        grid: { display: false },
-                        ticks: { autoSkip: true, maxTicksLimit: 25 }
-                    }
-                }
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true }, x: { ticks: { autoSkip: true, maxTicksLimit: 20 } } }
             }
+        });
+    }
+
+    function renderJournalChart(papers) {
+        const journalCounts = {};
+
+        papers.forEach(function(doc) {
+            const stems = doc.bibstem;
+            if (stems && stems.length > 0) {
+                const stem = stems[0];
+                journalCounts[stem] = (journalCounts[stem] || 0) + 1;
+            }
+        });
+
+        const sortedJournals = Object.keys(journalCounts).sort((a, b) => journalCounts[b] - journalCounts[a]).slice(0, 10);
+        const counts = sortedJournals.map(j => journalCounts[j]);
+
+        const ctx = document.getElementById('journalChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedJournals,
+                datasets: [{ label: 'Paper Count', data: counts, backgroundColor: '#2e7d32', borderRadius: 2 }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true } }
+            }
+        });
+    }
+
+    function renderTopPapersTable(papers) {
+        const sorted = [...papers].sort((a, b) => (b.citation_count || 0) - (a.citation_count || 0)).slice(0, 10);
+        const tbody = document.getElementById('top-papers-table');
+        tbody.innerHTML = '';
+
+        sorted.forEach(function(doc) {
+            const title = (doc.title && doc.title.length > 0) ? doc.title[0] : 'Untitled';
+            const journal = (doc.bibstem && doc.bibstem.length > 0) ? doc.bibstem[0] : (doc.pub || 'N/A');
+            const citations = (doc.citation_count || 0).toLocaleString();
+            const year = doc.year || 'N/A';
+            const url = 'https://ui.adsabs.harvard.edu/abs/' + doc.bibcode;
+
+            const row = `<tr>
+                <td><a class="ads-link" href="${url}" target="_blank" rel="noopener">${title}</a></td>
+                <td>${journal}</td>
+                <td>${year}</td>
+                <td><strong>${citations}</strong></td>
+            </tr>`;
+            tbody.innerHTML += row;
         });
     }
 
