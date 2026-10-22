@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Palomar Observatory - Publication & Impact Intelligence</title>
-    <!-- Chart.js for zero-cost visual analytics -->
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; background-color: #f8f9fa; color: #333; }
@@ -18,9 +18,9 @@
         .card .number { font-size: 2em; font-weight: bold; color: #005596; margin-top: 5px; }
         .card .label { font-size: 0.85em; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        /* Chart & Content Sections */
+        /* Chart Section */
         .section-box { background: white; padding: 25px; border-radius: 8px; border: 1px solid #e0e0e0; margin-bottom: 25px; }
-        .chart-container { position: relative; height: 300px; width: 100%; }
+        .chart-container { position: relative; height: 350px; width: 100%; }
         
         #loader { font-size: 1.1em; color: #005596; text-align: center; padding: 40px; }
     </style>
@@ -55,101 +55,68 @@
 <script>
     async function loadIntelligenceDashboard() {
         try {
-            // Fetch local JSON exported by GitHub Actions (bypassing browser cache)
             const response = await fetch('./data.json?v=' + new Date().getTime());
-            if (!response.ok) throw new Error("Could not load data.json");
+            if (!response.ok) {
+                throw new Error('HTTP error status: ' + response.status);
+            }
             
             const data = await response.json();
-            const bibcodes = data.bibcodes || [];
-            const totalPapers = data.num_documents || bibcodes.length;
-            
-            // Display total paper count accurately
-            document.getElementById("metric-total-papers").innerText = totalPapers.toLocaleString();
 
-            // Render Year Breakdown Chart
+            let bibcodes = [];
+            if (Array.isArray(data.bibcodes)) {
+                bibcodes = data.bibcodes;
+            } else if (Array.isArray(data.documents)) {
+                bibcodes = data.documents;
+            } else if (data.documents && Array.isArray(data.documents.bibcodes)) {
+                bibcodes = data.documents.bibcodes;
+            }
+
+            const totalCount = data.num_documents || bibcodes.length;
+            
+            document.getElementById("metric-total-papers").innerText = totalCount.toLocaleString();
+
             renderYearChart(bibcodes);
             
-            // Hide Loader and Display Dashboard
             document.getElementById("loader").style.display = "none";
             document.getElementById("dashboard").style.display = "block";
 
         } catch (error) {
-            document.getElementById("loader").innerHTML = "<p style='color: red;'>Failed to load library data from local data.json.</p>";
-            console.error("Dashboard error:", error);
+            document.getElementById("loader").innerHTML = '<p style="color: #d9534f; font-weight: bold;">Failed to render publication analytics.</p><p style="color: #666; font-size: 0.9em;">Error details: ' + error.message + '</p>';
         }
     }
 
     function renderYearChart(bibcodes) {
-    const yearCounts = {};
-    const currentYear = new Date().getFullYear();
+        const yearCounts = {};
+        const currentYear = new Date().getFullYear();
 
-    bibcodes.forEach(bibcode => {
-        if (!bibcode || bibcode.length < 4) return;
-        
-        // Extract first 4 characters
-        const yearStr = bibcode.substring(0, 4);
-        const yearNum = parseInt(yearStr, 10);
-        
-        // Include historical records dating back to Palomar's early operational era (1930+)
-        if (!isNaN(yearNum) && yearNum >= 1930 && yearNum <= currentYear) {
-            yearCounts[yearStr] = (yearCounts[yearStr] || 0) + 1;
-        }
-    });
-
-    const years = Object.keys(yearCounts).sort();
-    const counts = years.map(y => yearCounts[y]);
-
-    const ctx = document.getElementById('yearlyChart').getContext('2d');
-    
-    // Destroy previous chart instance if re-rendering to prevent overlap
-    if (window.myYearlyChart) {
-        window.myYearlyChart.destroy();
-    }
-
-    window.myYearlyChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: years,
-            datasets: [{
-                label: 'Refereed Publications',
-                data: counts,
-                backgroundColor: '#005596',
-                borderRadius: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { 
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.raw} Publications`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: { beginAtZero: true, grid: { color: '#f0f0f0' } },
-                x: { 
-                    grid: { display: false },
-                    ticks: {
-                        maxRotation: 45,
-                        autoSkip: true,
-                        maxTicksLimit: 25 // Keeps X-axis labels legible across long date ranges
-                    }
+        bibcodes.forEach(function(entry) {
+            const bibcode = typeof entry === 'string' ? entry : (entry.bibcode || '');
+            if (!bibcode) return;
+            
+            const match = bibcode.match(/(19\d{2}|20\d{2})/);
+            if (match) {
+                const yearNum = parseInt(match[0], 10);
+                if (yearNum >= 1930 && yearNum <= currentYear) {
+                    const yearStr = yearNum.toString();
+                    yearCounts[yearStr] = (yearCounts[yearStr] || 0) + 1;
                 }
             }
-        }
-    });
-}
+        });
 
-        const years = Object.keys(yearCounts).sort();
-        const counts = years.map(y => yearCounts[y]);
+        const years = Object.keys(yearCounts).sort(function(a, b) {
+            return parseInt(a, 10) - parseInt(b, 10);
+        });
+        const counts = years.map(function(y) {
+            return yearCounts[y];
+        });
 
         const ctx = document.getElementById('yearlyChart').getContext('2d');
-        new Chart(ctx, {
+        
+        if (window.myYearlyChart) {
+            window.myYearlyChart.destroy();
+        }
+
+        window.myYearlyChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: years,
@@ -157,16 +124,24 @@
                     label: 'Refereed Publications',
                     data: counts,
                     backgroundColor: '#005596',
-                    borderRadius: 4
+                    borderRadius: 2
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: { 
+                    legend: { display: false } 
+                },
                 scales: {
-                    y: { beginAtZero: true, grid: { color: '#f0f0f0' } },
-                    x: { grid: { display: false } }
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: '#f0f0f0' } 
+                    },
+                    x: { 
+                        grid: { display: false },
+                        ticks: { autoSkip: true, maxTicksLimit: 25 }
+                    }
                 }
             }
         });
@@ -174,5 +149,6 @@
 
     loadIntelligenceDashboard();
 </script>
+
 </body>
 </html>
