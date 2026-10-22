@@ -22,14 +22,6 @@
         .section-box { background: white; padding: 25px; border-radius: 8px; border: 1px solid #e0e0e0; margin-bottom: 25px; }
         .chart-container { position: relative; height: 300px; width: 100%; }
         
-        /* Table / Paper List */
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
-        th { background-color: #f1f5f9; color: #333; font-size: 0.9em; }
-        tr:hover { background-color: #f8fafc; }
-        .paper-link { color: #005596; font-weight: 600; text-decoration: none; }
-        .paper-link:hover { text-decoration: underline; }
-        
         #loader { font-size: 1.1em; color: #005596; text-align: center; padding: 40px; }
     </style>
 </head>
@@ -39,7 +31,7 @@
     <h1>Palomar Observatory Scientific Intelligence</h1>
     <p class="subtitle">Live analytics generated from refereed publications (Hale Telescope, ZTF, PTF, iPTF)</p>
 
-    <div id="loader">Fetching data live from NASA ADS...</div>
+    <div id="loader">Loading publication analytics...</div>
 
     <div id="dashboard" style="display: none;">
         <!-- Metrics Summary -->
@@ -47,18 +39,6 @@
             <div class="card">
                 <div class="label">Total Refereed Papers</div>
                 <div class="number" id="metric-total-papers">0</div>
-            </div>
-            <div class="card">
-                <div class="label">Total Citations</div>
-                <div class="number" id="metric-total-citations">0</div>
-            </div>
-            <div class="card">
-                <div class="label">H-Index</div>
-                <div class="number" id="metric-hindex">0</div>
-            </div>
-            <div class="card">
-                <div class="label">High Impact (>100 Citations)</div>
-                <div class="number" id="metric-high-impact">0</div>
             </div>
         </div>
 
@@ -69,38 +49,20 @@
                 <canvas id="yearlyChart"></canvas>
             </div>
         </div>
-
-        <!-- Top Cited Discoveries Table -->
-        <div class="section-box">
-            <h3>Top Cited Landmark Discoveries</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Bibcode</th>
-                        <th>Year</th>
-                        <th>Citations</th>
-                        <th>ADS Link</th>
-                    </tr>
-                </thead>
-                <tbody id="top-papers-body"></tbody>
-            </table>
-        </div>
     </div>
 </div>
 
 <script>
-    const LIBRARY_ID = "O622yT9iQCKJDhjyd2028w"; // Insert your ADS Library ID
-    const PUBLIC_LIB_URL = `https://api.adsabs.harvard.edu/v1/biblib/libraries/${LIBRARY_ID}`;
-
     async function loadIntelligenceDashboard() {
         try {
-            // 1. Fetch library metadata from NASA ADS Public API
-            const response = await fetch(PUBLIC_LIB_URL);
-            if (!response.ok) throw new Error("Network response was not ok");
-            const data = await response.json();
+            // Fetch local JSON exported by GitHub Actions
+            const response = await fetch('./data.json');
+            if (!response.ok) throw new Error("Could not load data.json");
             
-            const bibcodes = data.documents;
-            document.getElementById("metric-total-papers").innerText = data.metadata.num_documents;
+            const data = await response.json();
+            const bibcodes = data.bibcodes || [];
+            
+            document.getElementById("metric-total-papers").innerText = data.num_documents || bibcodes.length;
 
             // Render Year Breakdown Chart
             renderYearChart(bibcodes);
@@ -110,7 +72,7 @@
             document.getElementById("dashboard").style.display = "block";
 
         } catch (error) {
-            document.getElementById("loader").innerHTML = "<p style='color: red;'>Failed to load intelligence data from NASA ADS. Please check Library ID or try again later.</p>";
+            document.getElementById("loader").innerHTML = "<p style='color: red;'>Failed to load library data from local data.json.</p>";
             console.error("Dashboard error:", error);
         }
     }
