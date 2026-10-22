@@ -80,18 +80,70 @@
     }
 
     function renderYearChart(bibcodes) {
-        const yearCounts = {};
-        const currentYear = new Date().getFullYear();
+    const yearCounts = {};
+    const currentYear = new Date().getFullYear();
 
-        bibcodes.forEach(bibcode => {
-            const yearStr = bibcode.substring(0, 4);
-            const yearNum = parseInt(yearStr, 10);
-            
-            // Filter valid publication years between 1900 and current year
-            if (!isNaN(yearNum) && yearNum >= 1900 && yearNum <= currentYear) {
-                yearCounts[yearStr] = (yearCounts[yearStr] || 0) + 1;
+    bibcodes.forEach(bibcode => {
+        if (!bibcode || bibcode.length < 4) return;
+        
+        // Extract first 4 characters
+        const yearStr = bibcode.substring(0, 4);
+        const yearNum = parseInt(yearStr, 10);
+        
+        // Include historical records dating back to Palomar's early operational era (1930+)
+        if (!isNaN(yearNum) && yearNum >= 1930 && yearNum <= currentYear) {
+            yearCounts[yearStr] = (yearCounts[yearStr] || 0) + 1;
+        }
+    });
+
+    const years = Object.keys(yearCounts).sort();
+    const counts = years.map(y => yearCounts[y]);
+
+    const ctx = document.getElementById('yearlyChart').getContext('2d');
+    
+    // Destroy previous chart instance if re-rendering to prevent overlap
+    if (window.myYearlyChart) {
+        window.myYearlyChart.destroy();
+    }
+
+    window.myYearlyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: years,
+            datasets: [{
+                label: 'Refereed Publications',
+                data: counts,
+                backgroundColor: '#005596',
+                borderRadius: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.raw} Publications`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { color: '#f0f0f0' } },
+                x: { 
+                    grid: { display: false },
+                    ticks: {
+                        maxRotation: 45,
+                        autoSkip: true,
+                        maxTicksLimit: 25 // Keeps X-axis labels legible across long date ranges
+                    }
+                }
             }
-        });
+        }
+    });
+}
 
         const years = Object.keys(yearCounts).sort();
         const counts = years.map(y => yearCounts[y]);
