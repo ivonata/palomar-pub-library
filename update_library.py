@@ -73,42 +73,56 @@ else:
     exit(1)
 
 # =====================================================================
-# 3. Export Full Library Contents to docs/data.json for GitHub Pages
+# 3. Export FULL Library Contents (Paginated) to docs/data.json
 # =====================================================================
-print("\nFetching full library contents (with pagination) to update docs/data.json...")
+print("\nFetching full library contents with pagination to update docs/data.json...")
 
-export_params = {
-    "rows": 10000,
-    "start": 0
-}
+all_bibcodes = []
+start = 0
+rows_per_page = 2000  # ADS maximum per request
 
-lib_resp = requests.get(
-    f"https://api.adsabs.harvard.edu/v1/biblib/libraries/{LIBRARY_ID}",
-    headers=headers,
-    params=export_params
-)
-
-if lib_resp.status_code == 200:
+while True:
+    print(f"Fetching records starting at index {start}...")
+    lib_resp = requests.get(
+        f"https://api.adsabs.harvard.edu/v1/biblib/libraries/{LIBRARY_ID}",
+        headers=headers,
+        params={"rows": rows_per_page, "start": start}
+    )
+    
+    if lib_resp.status_code != 200:
+        print(f"Failed to fetch library contents: {lib_resp.status_code} - {lib_resp.text}")
+        exit(1)
+        
     lib_data = lib_resp.json()
     
-    # Handle both flat list and dict structures returned by ADS
+    # Extract bibcodes from current page
     if isinstance(lib_data.get("documents"), list):
-        all_bibcodes = lib_data["documents"]
+        page_bibcodes = lib_data["documents"]
     elif isinstance(lib_data.get("documents"), dict):
-        all_bibcodes = lib_data["documents"].get("bibcodes", [])
+        page_bibcodes = lib_data["documents"].get("bibcodes", [])
     else:
-        all_bibcodes = []
+        page_bibcodes = []
         
-    total_count = len(all_bibcodes)
+    if not page_bibcodes:
+        break  # No more bibcodes returned
+        
+    all_bibcodes.extend(page_bibcodes)
     
-    os.makedirs("docs", exist_ok=True)
-    with open("docs/data.json", "w") as f:
-        json.dump({
-            "num_documents": total_count,
-            "bibcodes": all_bibcodes
-        }, f, indent=2)
+    # Get total count reported by ADS metadata
+    total_expected = lib_data.get("metadata", {}).get("num_documents", 0)
+    
+    # Break loop if we've collected all documents or page returned less than max
+    if len(page_bibcodes) < rows_per_page or (total_expected > 0 and len(all_bibcodes) >= total_expected):
+        break
         
-    print(f"Successfully exported {total_count} bibcodes to docs/data.json!")
-else:
-    print(f"Failed to fetch library contents for dashboard export: {lib_resp.status_code} - {lib_resp.text}")
-    exit(1)
+    start += rows_per_page
+
+# Save full aggregated set to docs/data.json
+os.makedirs("docs", exist_ok=True)
+with open("docs/data.json", "w") as f:
+    json.dump({
+        "num_documents": len(all_bibcodes),
+        "bibcodes": all_bibcodes
+    }, f, indent=2)
+
+print(f"Successfully exported ALL {len(all_bibcodes)} bibcodes across pages to docs/data.json!")
