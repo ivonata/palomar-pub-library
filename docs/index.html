@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Palomar Observatory - Publication & Impact Intelligence</title>
+    <title>Palomar Observatory - Scientific Intelligence Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; background-color: #f8f9fa; color: #333; }
-        .container { max-width: 1100px; margin: 0 auto; }
+        .container { max-width: 1200px; margin: 0 auto; }
         h1 { color: #003366; margin-bottom: 5px; }
         p.subtitle { color: #666; margin-top: 0; margin-bottom: 25px; }
         
@@ -16,17 +16,10 @@
         .card .number { font-size: 2.2em; font-weight: bold; color: #005596; margin-top: 5px; }
         .card .label { font-size: 0.85em; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 20px; margin-bottom: 25px; }
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(540px, 1fr)); gap: 20px; margin-bottom: 25px; }
         .section-box { background: white; padding: 25px; border-radius: 8px; border: 1px solid #e0e0e0; margin-bottom: 25px; }
-        .chart-container { position: relative; height: 320px; width: 100%; }
+        .chart-container { position: relative; height: 340px; width: 100%; }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em; }
-        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background-color: #f1f5f9; color: #003366; }
-        tr:hover { background-color: #f8fafc; }
-        a.ads-link { color: #005596; text-decoration: none; font-weight: 500; }
-        a.ads-link:hover { text-decoration: underline; }
-
         #loader { font-size: 1.1em; color: #005596; text-align: center; padding: 40px; }
     </style>
 </head>
@@ -39,7 +32,7 @@
     <div id="loader">Loading publication intelligence...</div>
 
     <div id="dashboard" style="display: none;">
-        <!-- Metrics Summary -->
+        <!-- Metrics Summary Grid -->
         <div class="metrics-grid">
             <div class="card">
                 <div class="label">Total Refereed Papers</div>
@@ -59,7 +52,7 @@
             </div>
         </div>
 
-        <!-- Charts Grid -->
+        <!-- Charts Grid Row 1 -->
         <div class="charts-grid">
             <div class="section-box">
                 <h3>Publication Productivity Over Time</h3>
@@ -75,20 +68,28 @@
             </div>
         </div>
 
-        <!-- Top Cited Papers Table -->
+        <!-- Charts Grid Row 2 -->
+        <div class="charts-grid">
+            <div class="section-box">
+                <h3>Facility & Instrument Utilization</h3>
+                <div class="chart-container">
+                    <canvas id="facilityChart"></canvas>
+                </div>
+            </div>
+            <div class="section-box">
+                <h3>Funding & Grant Acknowledgments</h3>
+                <div class="chart-container">
+                    <canvas id="grantChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Keyword Distribution Chart -->
         <div class="section-box">
-            <h3>Top-Cited Landmark Papers</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Title</th>
-                        <th>Journal</th>
-                        <th>Year</th>
-                        <th>Citations</th>
-                    </tr>
-                </thead>
-                <tbody id="top-papers-table"></tbody>
-            </table>
+            <h3>Top Astronomical Research Keywords</h3>
+            <div class="chart-container">
+                <canvas id="keywordChart"></canvas>
+            </div>
         </div>
     </div>
 </div>
@@ -110,7 +111,9 @@
 
             renderYearChart(papers);
             renderJournalChart(papers);
-            renderTopPapersTable(papers);
+            renderFacilityChart(papers);
+            renderGrantChart(papers);
+            renderKeywordChart(papers);
             
             document.getElementById("loader").style.display = "none";
             document.getElementById("dashboard").style.display = "block";
@@ -120,11 +123,12 @@
         }
     }
 
+    // 1. Yearly Publication Trend Chart
     function renderYearChart(papers) {
         const yearCounts = {};
         const currentYear = new Date().getFullYear();
 
-        papers.forEach(function(doc) {
+        papers.forEach(doc => {
             const yearStr = doc.year;
             if (yearStr) {
                 const yearNum = parseInt(yearStr, 10);
@@ -137,26 +141,29 @@
         const years = Object.keys(yearCounts).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const counts = years.map(y => yearCounts[y]);
 
-        const ctx = document.getElementById('yearlyChart').getContext('2d');
-        new Chart(ctx, {
+        new Chart(document.getElementById('yearlyChart').getContext('2d'), {
             type: 'bar',
             data: {
                 labels: years,
-                datasets: [{ label: 'Publications', data: counts, backgroundColor: '#005596', borderRadius: 2 }]
+                datasets: [{ label: 'Number of Papers', data: counts, backgroundColor: '#005596', borderRadius: 2 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true }, x: { ticks: { autoSkip: true, maxTicksLimit: 20 } } }
+                scales: {
+                    x: { title: { display: true, text: 'Publication Year' }, ticks: { autoSkip: true, maxTicksLimit: 20 } },
+                    y: { title: { display: true, text: 'Paper Count' }, beginAtZero: true }
+                }
             }
         });
     }
 
+    // 2. Journal Breakdown Chart
     function renderJournalChart(papers) {
         const journalCounts = {};
 
-        papers.forEach(function(doc) {
+        papers.forEach(doc => {
             const stems = doc.bibstem;
             if (stems && stems.length > 0) {
                 const stem = stems[0];
@@ -164,45 +171,137 @@
             }
         });
 
-        const sortedJournals = Object.keys(journalCounts).sort((a, b) => journalCounts[b] - journalCounts[a]).slice(0, 10);
-        const counts = sortedJournals.map(j => journalCounts[j]);
+        const sorted = Object.keys(journalCounts).sort((a, b) => journalCounts[b] - journalCounts[a]).slice(0, 10);
+        const counts = sorted.map(j => journalCounts[j]);
 
-        const ctx = document.getElementById('journalChart').getContext('2d');
-        new Chart(ctx, {
+        new Chart(document.getElementById('journalChart').getContext('2d'), {
             type: 'bar',
             data: {
-                labels: sortedJournals,
-                datasets: [{ label: 'Paper Count', data: counts, backgroundColor: '#2e7d32', borderRadius: 2 }]
+                labels: sorted,
+                datasets: [{ label: 'Number of Papers', data: counts, backgroundColor: '#2e7d32', borderRadius: 2 }]
             },
             options: {
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: { x: { beginAtZero: true } }
+                scales: {
+                    x: { title: { display: true, text: 'Paper Count' }, beginAtZero: true },
+                    y: { title: { display: true, text: 'Journal / Stem' } }
+                }
             }
         });
     }
 
-    function renderTopPapersTable(papers) {
-        const sorted = [...papers].sort((a, b) => (b.citation_count || 0) - (a.citation_count || 0)).slice(0, 10);
-        const tbody = document.getElementById('top-papers-table');
-        tbody.innerHTML = '';
+    // 3. Facility & Instrument Utilization Chart
+    function renderFacilityChart(papers) {
+        const counts = {
+            'Hale Telescope (200-inch / P200)': 0,
+            'Samuel Oschin Telescope (P48 / ZTF / PTF)': 0,
+            '60-inch Telescope (P60 / SEDm)': 0
+        };
 
-        sorted.forEach(function(doc) {
-            const title = (doc.title && doc.title.length > 0) ? doc.title[0] : 'Untitled';
-            const journal = (doc.bibstem && doc.bibstem.length > 0) ? doc.bibstem[0] : (doc.pub || 'N/A');
-            const citations = (doc.citation_count || 0).toLocaleString();
-            const year = doc.year || 'N/A';
-            const url = 'https://ui.adsabs.harvard.edu/abs/' + doc.bibcode;
+        papers.forEach(doc => {
+            const text = JSON.stringify(doc).toLowerCase();
+            
+            const isHale = text.includes('hale') || text.includes('p200') || text.includes('200-inch') || text.includes('200inch') || text.includes('po:hale');
+            const isOschin = text.includes('oschin') || text.includes('p48') || text.includes('ztf') || text.includes('ptf') || text.includes('iptf') || text.includes('48-inch');
+            const isP60 = text.includes('p60') || text.includes('60-inch') || text.includes('sedm');
 
-            const row = `<tr>
-                <td><a class="ads-link" href="${url}" target="_blank" rel="noopener">${title}</a></td>
-                <td>${journal}</td>
-                <td>${year}</td>
-                <td><strong>${citations}</strong></td>
-            </tr>`;
-            tbody.innerHTML += row;
+            if (isHale) counts['Hale Telescope (200-inch / P200)']++;
+            if (isOschin) counts['Samuel Oschin Telescope (P48 / ZTF / PTF)']++;
+            if (isP60) counts['60-inch Telescope (P60 / SEDm)']++;
+        });
+
+        new Chart(document.getElementById('facilityChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: Object.keys(counts),
+                datasets: [{ label: 'Publications Mentioning Facility', data: Object.values(counts), backgroundColor: '#d97706', borderRadius: 4 }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { title: { display: true, text: 'Number of Papers' }, beginAtZero: true },
+                    y: { title: { display: true, text: 'Facility Category' } }
+                }
+            }
+        });
+    }
+
+    // 4. Funding & Grant Impact Chart
+    function renderGrantChart(papers) {
+        const agencyCounts = {
+            'NSF (National Science Foundation)': 0,
+            'NASA': 0,
+            'EU / Horizon Europe / ERC': 0,
+            'Caltech / Private Foundations': 0
+        };
+
+        papers.forEach(doc => {
+            const grants = doc.grant || [];
+            const text = grants.join(' ').toLowerCase();
+
+            if (text.includes('nsf') || text.includes('ast-') || text.includes('phy-') || text.includes('national science foundation')) agencyCounts['NSF (National Science Foundation)']++;
+            if (text.includes('nasa') || text.includes('nng') || text.includes('nhx') || text.includes('80nssc')) agencyCounts['NASA']++;
+            if (text.includes('erc') || text.includes('horizon') || text.includes('eu') || text.includes('european research council')) agencyCounts['EU / Horizon Europe / ERC']++;
+            if (text.includes('caltech') || text.includes('heising') || text.includes('moore') || text.includes('packard')) agencyCounts['Caltech / Private Foundations']++;
+        });
+
+        new Chart(document.getElementById('grantChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: Object.keys(agencyCounts),
+                datasets: [{ label: 'Grants Acknowledged', data: Object.values(agencyCounts), backgroundColor: '#6b21a8', borderRadius: 4 }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { title: { display: true, text: 'Acknowledging Papers' }, beginAtZero: true },
+                    y: { title: { display: true, text: 'Funding Agency' } }
+                }
+            }
+        });
+    }
+
+    // 5. Keyword Distribution Chart
+    function renderKeywordChart(papers) {
+        const kwCounts = {};
+
+        papers.forEach(doc => {
+            const keywords = doc.keyword || [];
+            keywords.forEach(kw => {
+                const cleanKw = kw.split(':')[0].trim(); // Normalize parent terms
+                if (cleanKw.length > 3) {
+                    kwCounts[cleanKw] = (kwCounts[cleanKw] || 0) + 1;
+                }
+            });
+        });
+
+        const sortedKw = Object.keys(kwCounts).sort((a, b) => kwCounts[b] - kwCounts[a]).slice(0, 12);
+        const counts = sortedKw.map(k => kwCounts[k]);
+
+        new Chart(document.getElementById('keywordChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: sortedKw,
+                datasets: [{ label: 'Paper Count', data: counts, backgroundColor: '#0284c7', borderRadius: 3 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { title: { display: true, text: 'Astronomical Keyword / Category' }, ticks: { autoSkip: false, maxRotation: 45 } },
+                    y: { title: { display: true, text: 'Paper Count' }, beginAtZero: true }
+                }
+            }
         });
     }
 
