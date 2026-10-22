@@ -44,44 +44,47 @@ while True:
         break
     start += rows_per_page
 
-print(f"Retrieved {len(all_bibcodes)} bibcodes from library.")
+print(f"Retrieved {len(all_bibcodes)} total bibcodes from library.")
 
-# 2. Fetch Detailed Metadata from ADS Search API in Form Batches
-print("2. Fetching detailed metadata from ADS Search API...")
-search_url = "https://api.adsabs.harvard.edu/v1/search/query"
+# 2. Fetch Detailed Metadata Using BigQuery Endpoint
+print("2. Querying ADS BigQuery API for complete paper metadata...")
+bigquery_url = "https://api.adsabs.harvard.edu/v1/search/bigquery"
 fields_to_fetch = "bibcode,title,bibstem,property,year,pubdate,pub,citation_count,citation,keyword,facility,instrument,grant"
 
+# BigQuery accepts a raw plain-text list of bibcodes in the payload
+payload_data = f"bibcode\n" + "\n".join(all_bibcodes)
+
+params = {
+    "q": "*:*",
+    "fl": fields_to_fetch,
+    "rows": len(all_bibcodes)
+}
+
+bq_headers = {
+    "Authorization": f"Bearer {ADS_DEV_KEY}",
+    "Content-Type": "big-query"
+}
+
+query_resp = requests.post(
+    bigquery_url,
+    headers=bq_headers,
+    params=params,
+    data=payload_data
+)
+
 detailed_records = []
-chunk_size = 500  # Safe chunk size for bibcode queries
+if query_resp.status_code == 200:
+    detailed_records = query_resp.json().get("response", {}).get("docs", [])
+    print(f"Successfully retrieved metadata for {len(detailed_records)} papers!")
+else:
+    print(f"BigQuery endpoint failed ({query_resp.status_code}): {query_resp.text}")
+    exit(1)
 
-for i in range(0, len(all_bibcodes), chunk_size):
-    chunk_bibcodes = all_bibcodes[i:i + chunk_size]
-    
-    # Form-data payload to handle large query strings safely
-    payload = {
-        "q": "bibcode:(" + " OR ".join([f'"{b}"' for b in chunk_bibcodes]) + ")",
-        "fl": fields_to_fetch,
-        "rows": len(chunk_bibcodes)
-    }
-    
-    query_resp = requests.post(
-        search_url, 
-        headers=headers, 
-        data=payload  # Sends as application/x-www-form-urlencoded
-    )
-    
-    if query_resp.status_code == 200:
-        docs = query_resp.json().get("response", {}).get("docs", [])
-        detailed_records.extend(docs)
-        print(f"   Fetched {len(detailed_records)} / {len(all_bibcodes)} detailed records...")
-    else:
-        print(f"   Warning: Failed chunk fetch ({query_resp.status_code}): {query_resp.text}")
-
-# 3. Calculate Summary Statistics
+# 3. Calculate Summary Impact Metrics
 total_citations = sum(doc.get("citation_count", 0) for doc in detailed_records)
 avg_citations = round(total_citations / len(detailed_records), 1) if detailed_records else 0
 
-# Calculate H-Index locally
+# Compute H-Index locally
 citation_list = sorted([doc.get("citation_count", 0) for doc in detailed_records], reverse=True)
 h_index = 0
 for idx, count in enumerate(citation_list):
@@ -90,7 +93,7 @@ for idx, count in enumerate(citation_list):
     else:
         break
 
-# 4. Save to docs/data.json
+# 4. Save Aggregated Output to docs/data.json
 os.makedirs("docs", exist_ok=True)
 output_data = {
     "num_documents": len(all_bibcodes),
@@ -106,4 +109,4 @@ output_data = {
 with open("docs/data.json", "w") as f:
     json.dump(output_data, f, indent=2)
 
-print(f"Successfully exported {len(detailed_records)} rich records to docs/data.json!")
+print(f"Export completed successfully to docs/data.json!")
