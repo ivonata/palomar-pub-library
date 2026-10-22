@@ -55,14 +55,16 @@
 <script>
     async function loadIntelligenceDashboard() {
         try {
-            // Fetch local JSON exported by GitHub Actions
-            const response = await fetch('./data.json');
+            // Fetch local JSON exported by GitHub Actions (bypassing browser cache)
+            const response = await fetch('./data.json?v=' + new Date().getTime());
             if (!response.ok) throw new Error("Could not load data.json");
             
             const data = await response.json();
             const bibcodes = data.bibcodes || [];
+            const totalPapers = data.num_documents || bibcodes.length;
             
-            document.getElementById("metric-total-papers").innerText = data.num_documents || bibcodes.length;
+            // Display total paper count accurately
+            document.getElementById("metric-total-papers").innerText = totalPapers.toLocaleString();
 
             // Render Year Breakdown Chart
             renderYearChart(bibcodes);
@@ -78,12 +80,16 @@
     }
 
     function renderYearChart(bibcodes) {
-        // Parse publication years from bibcode strings (e.g., '2024ApJ...960...12A' -> 2024)
         const yearCounts = {};
+        const currentYear = new Date().getFullYear();
+
         bibcodes.forEach(bibcode => {
-            const year = bibcode.substring(0, 4);
-            if (/^\d{4}$/.test(year)) {
-                yearCounts[year] = (yearCounts[year] || 0) + 1;
+            const yearStr = bibcode.substring(0, 4);
+            const yearNum = parseInt(yearStr, 10);
+            
+            // Filter valid publication years between 1900 and current year
+            if (!isNaN(yearNum) && yearNum >= 1900 && yearNum <= currentYear) {
+                yearCounts[yearStr] = (yearCounts[yearStr] || 0) + 1;
             }
         });
 
@@ -116,6 +122,5 @@
 
     loadIntelligenceDashboard();
 </script>
-
 </body>
 </html>
