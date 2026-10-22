@@ -51,7 +51,6 @@ print("2. Querying ADS BigQuery API for complete paper metadata...")
 bigquery_url = "https://api.adsabs.harvard.edu/v1/search/bigquery"
 fields_to_fetch = "bibcode,title,bibstem,property,year,pubdate,pub,citation_count,citation,keyword,facility,instrument,grant"
 
-# BigQuery accepts a raw plain-text list of bibcodes in the payload
 payload_data = f"bibcode\n" + "\n".join(all_bibcodes)
 
 params = {
@@ -80,28 +79,43 @@ else:
     print(f"BigQuery endpoint failed ({query_resp.status_code}): {query_resp.text}")
     exit(1)
 
-# 3. Calculate Summary Impact Metrics
-total_citations = sum(doc.get("citation_count", 0) for doc in detailed_records)
-avg_citations = round(total_citations / len(detailed_records), 1) if detailed_records else 0
+# 3. Calculate Refereed-Specific Summary Statistics
+refereed_records = [
+    doc for doc in detailed_records 
+    if "REFEREED" in doc.get("property", [])
+]
 
-# Compute H-Index locally
-citation_list = sorted([doc.get("citation_count", 0) for doc in detailed_records], reverse=True)
+refereed_citations = sum(doc.get("citation_count", 0) for doc in refereed_records)
+total_citations_all = sum(doc.get("citation_count", 0) for doc in detailed_records)
+
+avg_refereed_citations = (
+    round(refereed_citations / len(refereed_records), 1) 
+    if refereed_records else 0
+)
+
+# Calculate H-Index specifically on refereed papers
+ref_citation_list = sorted(
+    [doc.get("citation_count", 0) for doc in refereed_records], 
+    reverse=True
+)
 h_index = 0
-for idx, count in enumerate(citation_list):
+for idx, count in enumerate(ref_citation_list):
     if count >= idx + 1:
         h_index = idx + 1
     else:
         break
 
-# 4. Save Aggregated Output to docs/data.json
+# 4. Save Output to docs/data.json
 os.makedirs("docs", exist_ok=True)
 output_data = {
     "num_documents": len(all_bibcodes),
     "metrics": {
         "total_papers": len(all_bibcodes),
-        "total_citations": total_citations,
+        "refereed_papers": len(refereed_records),
+        "total_citations": refereed_citations,
+        "all_citations": total_citations_all,
         "h_index": h_index,
-        "avg_citations": avg_citations
+        "avg_citations": avg_refereed_citations
     },
     "papers": detailed_records
 }
