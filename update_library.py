@@ -10,8 +10,7 @@ if not ADS_DEV_KEY:
     exit(1)
 
 headers = {
-    "Authorization": f"Bearer {ADS_DEV_KEY}",
-    "Content-Type": "application/json"
+    "Authorization": f"Bearer {ADS_DEV_KEY}"
 }
 
 # 1. Fetch All Library Bibcodes (Paginated)
@@ -47,25 +46,30 @@ while True:
 
 print(f"Retrieved {len(all_bibcodes)} bibcodes from library.")
 
-# 2. Fetch Detailed Metadata for All Bibcodes
+# 2. Fetch Detailed Metadata from ADS Search API in Form Batches
 print("2. Fetching detailed metadata from ADS Search API...")
 search_url = "https://api.adsabs.harvard.edu/v1/search/query"
 fields_to_fetch = "bibcode,title,bibstem,property,year,pubdate,pub,citation_count,citation,keyword,facility,instrument,grant"
 
 detailed_records = []
-chunk_size = 1000  # Query bibcodes in safe POST chunks
+chunk_size = 500  # Safe chunk size for bibcode queries
 
 for i in range(0, len(all_bibcodes), chunk_size):
     chunk_bibcodes = all_bibcodes[i:i + chunk_size]
-    bibcode_query = "bibcode:(" + " OR ".join(chunk_bibcodes) + ")"
     
+    # Form-data payload to handle large query strings safely
     payload = {
-        "q": bibcode_query,
+        "q": "bibcode:(" + " OR ".join([f'"{b}"' for b in chunk_bibcodes]) + ")",
         "fl": fields_to_fetch,
         "rows": len(chunk_bibcodes)
     }
     
-    query_resp = requests.post(search_url, headers=headers, json=payload)
+    query_resp = requests.post(
+        search_url, 
+        headers=headers, 
+        data=payload  # Sends as application/x-www-form-urlencoded
+    )
+    
     if query_resp.status_code == 200:
         docs = query_resp.json().get("response", {}).get("docs", [])
         detailed_records.extend(docs)
@@ -77,7 +81,7 @@ for i in range(0, len(all_bibcodes), chunk_size):
 total_citations = sum(doc.get("citation_count", 0) for doc in detailed_records)
 avg_citations = round(total_citations / len(detailed_records), 1) if detailed_records else 0
 
-# Calculate H-Index locally from records
+# Calculate H-Index locally
 citation_list = sorted([doc.get("citation_count", 0) for doc in detailed_records], reverse=True)
 h_index = 0
 for idx, count in enumerate(citation_list):
