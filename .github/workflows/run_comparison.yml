@@ -1,7 +1,7 @@
 name: Run Library Comparison
 
 on:
-  workflow_dispatch: # Allows you to trigger it manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
   compare:
@@ -28,3 +28,4 @@ jobs:
         with:
           name: missing-papers-report
           path: docs/missing_analysis.json
+          if-no-files-found: error
