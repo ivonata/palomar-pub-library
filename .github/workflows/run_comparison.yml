@@ -24,7 +24,7 @@ jobs:
         run: python compare_library.py
 
       - name: Upload analysis artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: missing-papers-report
           path: docs/missing_analysis.json
