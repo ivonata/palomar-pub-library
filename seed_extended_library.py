@@ -1,7 +1,7 @@
 import os
 import requests
 
-LIBRARY_ID = "O622yT9iQCKJDhjyd2028w"
+LIBRARY_ID = "9FNcChCZcDa8v1C9JQJQGVa9NPm1X7qHWUobtO44"
 token = os.environ.get("ADS_DEV_KEY")
 
 if not token:
